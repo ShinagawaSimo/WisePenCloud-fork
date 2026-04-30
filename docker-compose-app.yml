@@ -19,7 +19,9 @@ services:
     volumes:
       - ../logs/user:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - user-service
 
   system-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-system:${APP_VERSION}
@@ -39,7 +41,9 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - system-service
 
   resource-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-resource:${APP_VERSION}
@@ -59,7 +63,9 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - resource-service
 
   document-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-document:${APP_VERSION}
@@ -79,7 +85,9 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - document-service
 
   file-storage-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-file-storage:${APP_VERSION}
@@ -99,7 +107,9 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - file-storage-service
 
   fudan-extension-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-fudan-extension:${APP_VERSION}
@@ -119,7 +129,9 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - fudan-extension-service
 
   note-service:
     image: ${DOCKER_REGISTRY}/wisepencloud-note:${APP_VERSION}
@@ -139,9 +151,11 @@ services:
     volumes:
       - ../logs/system:/logs
     networks:
-      - cloud-net
+      wisepen-net:
+        aliases:
+          - note-service
 
 networks:
-  cloud-net:
+  wisepen-net:
     external: true
-    name: cloud-infra_cloud-net
+    name: wisepen-net

@@ -2,7 +2,7 @@
 target/
 !.mvn/wrapper/maven-wrapper.jar
 
-# 工具下载产物 / 运行期资源
+# 工具下载产物 / 运行期资源 / 日志
 opentelemetry-javaagent.jar
 logs/
 
@@ -11,8 +11,6 @@ dev.properties
 
 # 环境变量 / 凭证
 .env
-.env.local
-.env.internal
 !.env.example
 
 # IntelliJ IDEA
