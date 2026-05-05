@@ -32,8 +32,7 @@ spring:
 
 wisepen:
   skill:
-    storage-root: /data/wisepen/skills
-    temp-root: /tmp/wisepen/skills
+    storage-biz-tag-prefix: skill
     audit-enabled: true
     hot-load-enabled: true
     lazy-asset-fetch-enabled: true

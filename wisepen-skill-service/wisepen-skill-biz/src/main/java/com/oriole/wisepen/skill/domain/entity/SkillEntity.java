@@ -19,9 +19,11 @@ public class SkillEntity extends SkillInfoBase {
     @Id
     private String skillId;
 
-    private String manifestPath;
+    private String storageBizTag;
 
-    private String assetRootPath;
+    private String manifestObjectKey;
+
+    private String assetObjectKey;
 
     private List<SkillAssetEntity> assets = new ArrayList<>();
 

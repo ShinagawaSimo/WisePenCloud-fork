@@ -8,9 +8,11 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "wisepen.skill")
 public class SkillProperties {
-    private String storageRoot = "/data/wisepen/skills";
-
-    private String tempRoot = "/tmp/wisepen/skills";
+    /**
+     * Skill 文件在对象存储中的业务隔离前缀。
+     * Skill 服务只维护逻辑命名空间，不再直接拼本地 storageRoot 路径。
+     */
+    private String storageBizTagPrefix = "skill";
 
     private Boolean auditEnabled = true;
 

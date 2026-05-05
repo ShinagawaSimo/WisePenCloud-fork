@@ -10,6 +10,7 @@ import lombok.Setter;
 @EqualsAndHashCode(callSuper = true)
 public class SkillInfoRespDTO extends SkillInfoBase {
     private String skillId;
-    private String manifestPath;
-    private String assetRootPath;
+    private String storageBizTag;
+    private String manifestObjectKey;
+    private String assetObjectKey;
 }
