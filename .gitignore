@@ -8,6 +8,8 @@ opentelemetry-javaagent.jar
 dev.properties
 logs
 
+docs
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws
