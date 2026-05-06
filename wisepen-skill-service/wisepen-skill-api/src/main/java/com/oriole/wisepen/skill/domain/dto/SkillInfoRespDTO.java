@@ -12,5 +12,7 @@ public class SkillInfoRespDTO extends SkillInfoBase {
     private String skillId;
     private String storageBizTag;
     private String manifestObjectKey;
+    private String scriptsObjectKey;
+    private String referencesObjectKey;
     private String assetObjectKey;
 }

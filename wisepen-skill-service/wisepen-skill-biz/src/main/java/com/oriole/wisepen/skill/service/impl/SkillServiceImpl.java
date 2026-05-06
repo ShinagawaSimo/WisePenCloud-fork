@@ -68,6 +68,8 @@ public class SkillServiceImpl implements ISkillService {
         response.setSourceType(entity.getSourceType());
         response.setStorageBizTag(entity.getStorageBizTag());
         response.setManifestObjectKey(entity.getManifestObjectKey());
+        response.setScriptsObjectKey(entity.getScriptsObjectKey());
+        response.setReferencesObjectKey(entity.getReferencesObjectKey());
         response.setAssetObjectKey(entity.getAssetObjectKey());
         return response;
     }

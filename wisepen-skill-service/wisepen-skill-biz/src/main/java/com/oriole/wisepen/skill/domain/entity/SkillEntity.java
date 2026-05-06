@@ -23,6 +23,10 @@ public class SkillEntity extends SkillInfoBase {
 
     private String manifestObjectKey;
 
+    private String scriptsObjectKey;
+
+    private String referencesObjectKey;
+
     private String assetObjectKey;
 
     private List<SkillAssetEntity> assets = new ArrayList<>();
