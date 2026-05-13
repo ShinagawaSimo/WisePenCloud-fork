@@ -6,7 +6,6 @@ import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitReqDTO;
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
 import com.oriole.wisepen.file.storage.api.enums.StorageSceneEnum;
 import com.oriole.wisepen.file.storage.api.feign.RemoteStorageService;
-import com.oriole.wisepen.skill.config.SkillProperties;
 import com.oriole.wisepen.skill.service.ISkillStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,16 +17,15 @@ import java.util.List;
 public class SkillStorageServiceImpl implements ISkillStorageService {
 
     private final RemoteStorageService remoteStorageService;
-    private final SkillProperties skillProperties;
 
     @Override
-    public UploadInitRespDTO initManifestUpload(String ownerId, String skillId, String md5, Long expectedSize) {
-        return initUpload(ownerId, skillId, "md", md5, expectedSize);
+    public UploadInitRespDTO initManifestUpload(String skillId, String version, String md5, Long expectedSize) {
+        return initUpload(buildObjectKey(skillId, version, "SKILL.md"), "md", md5, expectedSize);
     }
 
     @Override
-    public UploadInitRespDTO initAssetUpload(String ownerId, String skillId, String extension, String md5, Long expectedSize) {
-        return initUpload(ownerId, skillId, extension, md5, expectedSize);
+    public UploadInitRespDTO initAssetUpload(String skillId, String version, String relativePath, String md5, Long expectedSize) {
+        return initUpload(buildObjectKey(skillId, version, relativePath), extractExtension(relativePath), md5, expectedSize);
     }
 
     @Override
@@ -40,18 +38,26 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
         unwrapVoid(remoteStorageService.deleteFiles(objectKeys), "删除 Skill 文件失败");
     }
 
-    private UploadInitRespDTO initUpload(String ownerId, String skillId, String extension, String md5, Long expectedSize) {
+    private UploadInitRespDTO initUpload(String objectKey, String extension, String md5, Long expectedSize) {
         return unwrap(remoteStorageService.initUpload(UploadInitReqDTO.builder()
                 .md5(md5)
                 .extension(extension)
                 .scene(StorageSceneEnum.PRIVATE_DOC)
-                .bizTag(buildStorageBizTag(ownerId, skillId))
+                .objectKey(objectKey)
                 .expectedSize(expectedSize)
                 .build()), "初始化 Skill 文件上传失败");
     }
 
-    private String buildStorageBizTag(String ownerId, String skillId) {
-        return skillProperties.getStorageBizTagPrefix() + "/" + ownerId + "/" + skillId;
+    private String buildObjectKey(String skillId, String version, String relativePath) {
+        return "skills/" + skillId + "/" + version + "/" + relativePath;
+    }
+
+    private String extractExtension(String relativePath) {
+        int dotIndex = relativePath.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == relativePath.length() - 1) {
+            return "bin";
+        }
+        return relativePath.substring(dotIndex + 1);
     }
 
     private <T> T unwrap(R<T> response, String message) {
