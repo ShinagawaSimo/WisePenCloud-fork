@@ -4,11 +4,8 @@ import com.oriole.wisepen.common.core.context.SecurityContextHolder;
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.common.core.domain.enums.BusinessType;
 import com.oriole.wisepen.common.core.exception.ServiceException;
-<<<<<<< HEAD
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillAssetUploadInitReqDTO;
-=======
->>>>>>> 78ae490 (refactor(): 依需求重构WisepenSkillService)
 import com.oriole.wisepen.common.log.annotation.Log;
 import com.oriole.wisepen.common.security.annotation.CheckLogin;
 import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
@@ -16,11 +13,7 @@ import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillManifestUploadInitReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
-<<<<<<< HEAD
 import com.oriole.wisepen.skill.exception.SkillError;
-=======
-import com.oriole.wisepen.skill.exception.SkillErrorCode;
->>>>>>> 78ae490 (refactor(): 依需求重构WisepenSkillService)
 import com.oriole.wisepen.skill.service.ISkillService;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionReqDTO;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionResDTO;
