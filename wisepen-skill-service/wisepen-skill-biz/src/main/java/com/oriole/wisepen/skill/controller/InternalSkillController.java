@@ -24,7 +24,7 @@ public class InternalSkillController implements RemoteSkillService {
     @Override
     @PostMapping("/createSkill")
     public R<String> createSkill(@Validated @RequestBody SkillCreateReqDTO dto) {
-        return R.ok(skillService.createSkill(dto));
+        return R.ok(skillService.createSkill(dto, dto.getOwnerId()));
     }
 
     @Override
@@ -37,6 +37,6 @@ public class InternalSkillController implements RemoteSkillService {
     @Override
     @PostMapping("/getSkillInfo")
     public R<SkillInfoRespDTO> getSkillInfo(@Validated @RequestBody SkillInfoGetReqDTO dto) {
-        return R.ok(skillService.getSkillInfo(dto));
+        return R.ok(skillService.getSkillInfo(dto.getSkillId()));
     }
 }

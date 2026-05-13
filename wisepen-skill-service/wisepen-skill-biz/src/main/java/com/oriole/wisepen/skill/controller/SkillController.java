@@ -3,13 +3,19 @@ package com.oriole.wisepen.skill.controller;
 import com.oriole.wisepen.common.core.context.SecurityContextHolder;
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.common.core.domain.enums.BusinessType;
+import com.oriole.wisepen.common.core.exception.ServiceException;
 import com.oriole.wisepen.common.log.annotation.Log;
 import com.oriole.wisepen.common.security.annotation.CheckLogin;
 import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
+import com.oriole.wisepen.skill.exception.SkillErrorCode;
 import com.oriole.wisepen.skill.service.ISkillService;
+import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionReqDTO;
+import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionResDTO;
+import com.oriole.wisepen.resource.enums.ResourceAccessRole;
+import com.oriole.wisepen.resource.feign.RemoteResourceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -27,19 +33,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class SkillController {
 
     private final ISkillService skillService;
+    private final RemoteResourceService remoteResourceService;
 
     @Operation(summary = "创建 Skill", description = "创建一个归属于当前用户的 Skill 主档")
     @Log(title = "创建 Skill", businessType = BusinessType.INSERT)
     @PostMapping("/createSkill")
     public R<String> createSkill(@Validated @RequestBody SkillCreateReqDTO dto) {
-        dto.setOwnerId(SecurityContextHolder.getUserId().toString());
-        return R.ok(skillService.createSkill(dto));
+        String userId = SecurityContextHolder.getUserId().toString();
+        dto.setOwnerId(userId);
+        return R.ok(skillService.createSkill(dto, userId));
     }
 
     @Operation(summary = "更新 Skill", description = "更新 Skill 的名称与描述")
     @Log(title = "更新 Skill", businessType = BusinessType.UPDATE)
     @PostMapping("/changeSkill")
     public R<Void> updateSkill(@Validated @RequestBody SkillUpdateReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
         skillService.updateSkill(dto);
         return R.ok();
     }
@@ -47,6 +56,18 @@ public class SkillController {
     @Operation(summary = "查询 Skill 详情", description = "查询 Skill 主档与核心目录信息")
     @PostMapping("/getSkillInfo")
     public R<SkillInfoRespDTO> getSkillInfo(@Validated @RequestBody SkillInfoGetReqDTO dto) {
-        return R.ok(skillService.getSkillInfo(dto));
+        remoteResourceService.checkResPermission(new ResourceCheckPermissionReqDTO(
+                dto.getSkillId(), SecurityContextHolder.getUserId(), SecurityContextHolder.getGroupRoleMap()
+        ));
+        return R.ok(skillService.getSkillInfo(dto.getSkillId()));
+    }
+
+    private void assertSkillOwner(String skillId) {
+        ResourceCheckPermissionResDTO permission = remoteResourceService.checkResPermission(new ResourceCheckPermissionReqDTO(
+                skillId, SecurityContextHolder.getUserId(), SecurityContextHolder.getGroupRoleMap()
+        )).getData();
+        if (permission == null || permission.getResourceAccessRole() != ResourceAccessRole.OWNER) {
+            throw new ServiceException(SkillErrorCode.SKILL_OWNER_MISMATCH);
+        }
     }
 }

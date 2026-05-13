@@ -1,9 +1,8 @@
 package com.oriole.wisepen.skill.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.oriole.wisepen.common.core.exception.ServiceException;
-import com.oriole.wisepen.skill.config.SkillProperties;
 import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
 import com.oriole.wisepen.skill.domain.entity.SkillEntity;
@@ -12,33 +11,50 @@ import com.oriole.wisepen.skill.enums.SkillStatusEnum;
 import com.oriole.wisepen.skill.exception.SkillErrorCode;
 import com.oriole.wisepen.skill.repository.SkillRepository;
 import com.oriole.wisepen.skill.service.ISkillService;
+import com.oriole.wisepen.resource.domain.dto.ResourceCreateReqDTO;
+import com.oriole.wisepen.resource.enums.ResourceType;
+import com.oriole.wisepen.resource.feign.RemoteResourceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class SkillServiceImpl implements ISkillService {
 
     private final SkillRepository skillRepository;
-    private final SkillProperties skillProperties;
+    private final RemoteResourceService remoteResourceService;
 
     @Override
-    public String createSkill(SkillCreateReqDTO dto) {
-        String skillId = UUID.randomUUID().toString();
+    public String createSkill(SkillCreateReqDTO dto, String userId) {
+        ResourceCreateReqDTO resourceReq = ResourceCreateReqDTO.builder()
+                .resourceName(dto.getSkillName())
+                .resourceType(ResourceType.SKILL)
+                .ownerId(userId)
+                .build();
+        String skillId = remoteResourceService.createResource(resourceReq).getData();
+
         SkillEntity entity = new SkillEntity();
         entity.setSkillId(skillId);
         entity.setSkillName(dto.getSkillName());
-        entity.setOwnerId(dto.getOwnerId());
+        entity.setOwnerId(userId);
         entity.setDescription(dto.getDescription());
         entity.setSourceType(dto.getSourceType());
         entity.setSkillStatus(SkillStatusEnum.DRAFT);
         entity.setAuditStatus(SkillAuditStatusEnum.NOT_SUBMITTED);
-        // Skill 只保存对象存储命名空间；真正的上传/下载/删除由 file-storage-service 负责。
-        entity.setStorageBizTag(buildStorageBizTag(dto.getOwnerId(), skillId));
         skillRepository.save(entity);
         return skillId;
+    }
+
+    @Override
+    @Transactional
+    public void deleteSkills(List<String> skillIds) {
+        if (skillIds == null || skillIds.isEmpty()) {
+            return;
+        }
+        skillRepository.deleteBySkillIdIn(skillIds);
     }
 
     @Override
@@ -55,29 +71,9 @@ public class SkillServiceImpl implements ISkillService {
     }
 
     @Override
-    public SkillInfoRespDTO getSkillInfo(SkillInfoGetReqDTO dto) {
-        SkillEntity entity = skillRepository.findBySkillId(dto.getSkillId())
+    public SkillInfoRespDTO getSkillInfo(String skillId) {
+        SkillEntity entity = skillRepository.findBySkillId(skillId)
                 .orElseThrow(() -> new ServiceException(SkillErrorCode.SKILL_NOT_FOUND));
-        SkillInfoRespDTO response = new SkillInfoRespDTO();
-        response.setSkillId(entity.getSkillId());
-        response.setSkillName(entity.getSkillName());
-        response.setOwnerId(entity.getOwnerId());
-        response.setDescription(entity.getDescription());
-        response.setSkillStatus(entity.getSkillStatus());
-        response.setAuditStatus(entity.getAuditStatus());
-        response.setSourceType(entity.getSourceType());
-        response.setStorageBizTag(entity.getStorageBizTag());
-        response.setManifestObjectKey(entity.getManifestObjectKey());
-        response.setScriptsObjectKey(entity.getScriptsObjectKey());
-        response.setReferencesObjectKey(entity.getReferencesObjectKey());
-        response.setAssetObjectKey(entity.getAssetObjectKey());
-        return response;
-    }
-
-    private String buildStorageBizTag(String ownerId, String skillId) {
-        if (ownerId == null || ownerId.isBlank()) {
-            throw new ServiceException(SkillErrorCode.SKILL_OWNER_MISMATCH);
-        }
-        return skillProperties.getStorageBizTagPrefix() + "/" + ownerId + "/" + skillId;
+        return BeanUtil.copyProperties(entity, SkillInfoRespDTO.class);
     }
 }
