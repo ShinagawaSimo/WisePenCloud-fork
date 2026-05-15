@@ -24,7 +24,6 @@ import com.oriole.wisepen.resource.event.TagChangedEvent;
 import com.oriole.wisepen.resource.event.TagDeletedEvent;
 import com.oriole.wisepen.resource.event.TagTrashedEvent;
 import com.oriole.wisepen.resource.exception.ResourceError;
-import com.oriole.wisepen.resource.domain.entity.ResourceInteractionInfoEntity;
 import com.oriole.wisepen.resource.repository.CustomResourceItemRepository;
 import com.oriole.wisepen.resource.repository.GroupResConfigRepository;
 import com.oriole.wisepen.resource.repository.ResourceInteractionInfoRepository;
@@ -485,18 +484,6 @@ public class ResourceServiceImpl implements IResourceService {
 
             return resp;
         }).collect(Collectors.toList());
-
-        // 批量聚合互动信息，避免 N+1 查询
-        List<String> resourceIds = entityPage.getContent().stream()
-                .map(ResourceItemEntity::getResourceId)
-                .collect(Collectors.toList());
-        Map<String, ResourceInteractionInfoEntity> interactInfoMap = resourceInteractionInfoRepository.findByResourceIdIn(resourceIds)
-                .stream()
-                .collect(Collectors.toMap(ResourceInteractionInfoEntity::getResourceId, e -> e));
-
-        responses.forEach(resp -> {
-            resp.setResourceInteractionInfo(interactInfoMap.getOrDefault(resp.getResourceId(), new ResourceInteractionInfoEntity()));
-        });
 
         PageR<ResourceItemResponse> pageR = new PageR<>(entityPage.getTotalElements(), page, size);
         pageR.addAll(responses);

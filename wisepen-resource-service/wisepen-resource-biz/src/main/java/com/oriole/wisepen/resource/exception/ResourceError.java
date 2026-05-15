@@ -19,7 +19,6 @@ public enum ResourceError implements IResult {
     PARENT_TAG_NODE_NOT_FOUND(5112, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.TAG_NODE, ErrorReason.NOT_FOUND), "父标签节点不存在"),
     TAG_NODE_NAME_CONFLICT(5121, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.TAG_NODE, ErrorReason.CONFLICT),"同级目录下已存在同名标签节点"),
     CANNOT_SET_TAG_NODE_VISIBILITY(5131, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.TAG_NODE, ErrorReason.NOT_ALLOWED), "不能设置个人标签节点的可见范围"),
-    TAG_MOUNT_DENIED(5141, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE, ErrorReason.PERMISSION_DENIED),"无权挂载资源到该标签下"),
 
     // Tag路径节点相关异常
     CANNOT_USE_RESERVED_TAG_PATH_NODE_NAME(5211, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.TAG_PATH_NODE, ErrorReason.NOT_ALLOWED),"不能使用系统保留名称(/ 或 .Trash)作为路径节点名称"),
@@ -38,8 +37,6 @@ public enum ResourceError implements IResult {
     // 资源相关异常
     RESOURCE_NOT_FOUND(5411, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE, ErrorReason.NOT_FOUND),"资源不存在"),
     RESOURCE_PERMISSION_DENIED(5421, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE, ErrorReason.PERMISSION_DENIED),"无权访问或操作该资源"),
-    SCORE_OUT_OF_RANGE(5431, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE, ErrorReason.INVALID), "评分必须在1到5之间"),
-    RESOURCE_SEARCH_FAILED(5441, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE, ErrorReason.FAILED), "搜索资源失败"),
 
     // 资源标签相关异常
     CANNOT_BIND_RESOURCE_TO_MULTIPLE_PATH_NODES(5511, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.NOT_ALLOWED),"不能为资源绑定多个路径节点"),

@@ -13,7 +13,6 @@ import com.oriole.wisepen.resource.domain.entity.ResourceItemEntity;
 import com.oriole.wisepen.resource.enums.ResourceSortBy;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface IResourceService {
 
