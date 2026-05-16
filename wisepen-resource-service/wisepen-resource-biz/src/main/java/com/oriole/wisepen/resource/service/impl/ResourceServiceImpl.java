@@ -24,9 +24,12 @@ import com.oriole.wisepen.resource.event.TagChangedEvent;
 import com.oriole.wisepen.resource.event.TagDeletedEvent;
 import com.oriole.wisepen.resource.event.TagTrashedEvent;
 import com.oriole.wisepen.resource.exception.ResourceError;
+import com.oriole.wisepen.resource.exception.ResPermissionErrorCode;
+import com.oriole.wisepen.resource.domain.entity.ResourceInteractInfoEntity;
+import com.oriole.wisepen.resource.repository.CustomResourceInteractInfoRepository;
 import com.oriole.wisepen.resource.repository.CustomResourceItemRepository;
 import com.oriole.wisepen.resource.repository.GroupResConfigRepository;
-import com.oriole.wisepen.resource.repository.ResourceInteractionInfoRepository;
+import com.oriole.wisepen.resource.repository.ResourceInteractInfoRepository;
 import com.oriole.wisepen.resource.repository.ResourceItemRepository;
 import com.oriole.wisepen.resource.repository.ResourceUserInteractRecordRepository;
 import com.oriole.wisepen.resource.repository.TagRepository;
@@ -43,13 +46,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.TimeUnit;
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
@@ -69,8 +75,8 @@ public class ResourceServiceImpl implements IResourceService {
     private final ResourceItemRepository resourceItemRepository;
     private final CustomResourceItemRepository customResourceItemRepository;
     private final GroupResConfigRepository groupResConfigRepository;
-    private final ResourceInteractionInfoRepository resourceInteractionInfoRepository;
-    private final ResourceUserInteractRecordRepository resourceUserInteractRecordRepository;
+    private final ResourceInteractInfoRepository resourceInteractInfoRepository;
+    private final CustomResourceInteractInfoRepository customResourceInteractInfoRepository;
 
     private final IEventPublisher eventPublisher;
     private final MongoTemplate mongoTemplate;
@@ -80,6 +86,11 @@ public class ResourceServiceImpl implements IResourceService {
     private final ISearchSyncService searchSyncService;
 
     private final RemoteUserService remoteUserService;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /** 阅读量去重窗口时长（分钟），可通过配置文件调整 */
+    @Value("${wisepen.resource.read-dedup-ttl-minutes:10}")
+    private long readDedupTtlMinutes;
 
     @TransactionalEventListener
     public void handleTagTrashedEvent(TagTrashedEvent event) {
@@ -444,10 +455,10 @@ public class ResourceServiceImpl implements IResourceService {
             }
         }
 
-        // 新增互动信息
-        ResourceInteractionInfoEntity resourceInteractionInfo = resourceInteractionInfoRepository.findById(entity.getResourceId())
-            .orElseGet(ResourceInteractionInfoEntity::new);
-        resp.setResourceInteractionInfo(resourceInteractionInfo);
+        // 聚合互动信息：readCount 来自互动信息表，缺失时返回 0
+        resp.setReadCount(resourceInteractInfoRepository.findById(entity.getResourceId())
+                .map(ResourceInteractInfoEntity::getReadCount)
+                .orElse(0L));
         return resp;
     }
 
@@ -523,6 +534,16 @@ public class ResourceServiceImpl implements IResourceService {
             return resp;
         }).collect(Collectors.toList());
 
+        // 批量聚合互动信息，避免 N+1 查询
+        List<String> resourceIds = entityPage.getContent().stream()
+                .map(ResourceItemEntity::getResourceId)
+                .collect(Collectors.toList());
+        Map<String, Long> readCountMap = resourceInteractInfoRepository.findByResourceIdIn(resourceIds)
+                .stream()
+                .collect(Collectors.toMap(ResourceInteractInfoEntity::getResourceId,
+                        ResourceInteractInfoEntity::getReadCount));
+        responses.forEach(resp -> resp.setReadCount(readCountMap.getOrDefault(resp.getResourceId(), 0L)));
+
         PageR<ResourceItemResponse> pageR = new PageR<>(entityPage.getTotalElements(), page, size);
         pageR.addAll(responses);
         return pageR;
@@ -560,10 +581,11 @@ public class ResourceServiceImpl implements IResourceService {
             log.warn("resourceItem compensated resourceId={}", entity.getResourceId(), e);
             throw e;
         }
-        // 同步初始化互动信息记录
-        resourceInteractionInfoRepository.save(new ResourceInteractionInfoEntity(entity.getResourceId()));
-        // 同步初始化资源搜索记录
-        searchSyncService.syncResourceMetadata(entity, EnumSet.of(UpsertField.RESOURCE_TYPE, UpsertField.RESOURCE_NAME, UpsertField.ACL));
+        // 同步初始化互动信息记录，确保新资源首读前就有明确的 readCount = 0
+        ResourceInteractInfoEntity interactInfo = new ResourceInteractInfoEntity();
+        interactInfo.setResourceId(entity.getResourceId());
+        interactInfo.setReadCount(0L);
+        resourceInteractInfoRepository.save(interactInfo);
 
         log.info("resource created resourceId={} ownerId={} resourceType={} pathTagId={}",
                 entity.getResourceId(), dto.getOwnerId(), dto.getResourceType(), dto.getPathTagId());
@@ -975,6 +997,39 @@ public class ResourceServiceImpl implements IResourceService {
         }
 
         return result;
+    }
+
+    @Override
+    public void recordResourceRead(ResourceReadRecordReqDTO dto) {
+        // 校验资源是否存在
+        if (!resourceItemRepository.existsById(dto.getResourceId())) {
+            throw new ServiceException(ResPermissionErrorCode.RESOURCE_NOT_FOUND);
+        }
+
+        // userId 为 null 时无法区分用户，不能进行用户级去重，直接拒绝计数并告警。
+        // 正常链路中 @CheckLogin 已保证 userId 非空，此处为防御性校验。
+        if (dto.getUserId() == null) {
+            log.warn("recordResourceRead skipped: userId is null, cannot perform per-user dedup. "
+                    + "resourceId={} source={}", dto.getResourceId(), dto.getSource());
+            return;
+        }
+
+        // Redis 去重：对同一用户 + 同一资源，在 TTL 窗口内只计一次。
+        // key 格式：res:read:{resourceId}:{userId}，不同用户拥有独立 key，互不干扰。
+        String dedupKey = "res:read:" + dto.getResourceId() + ":" + dto.getUserId();
+        Boolean isFirstReadInWindow = stringRedisTemplate.opsForValue()
+                .setIfAbsent(dedupKey, "1", readDedupTtlMinutes, TimeUnit.MINUTES);
+
+        if (Boolean.TRUE.equals(isFirstReadInWindow)) {
+            // 窗口内首次阅读，原子自增互动信息表中的 readCount（upsert：老资源无记录时自动补建）
+            customResourceInteractInfoRepository.incrementReadCount(dto.getResourceId(), 1L);
+            log.info("readCount incremented resourceId={} userId={} source={}",
+                    dto.getResourceId(), dto.getUserId(), dto.getSource());
+        } else {
+            // 窗口内重复阅读，不计入
+            log.debug("readCount skipped (dedup) resourceId={} userId={} source={}",
+                    dto.getResourceId(), dto.getUserId(), dto.getSource());
+        }
     }
 
     /**
