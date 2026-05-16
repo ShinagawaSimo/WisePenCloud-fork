@@ -251,6 +251,44 @@ public class ResourceServiceImpl implements IResourceService {
             return;
         }
 
+        List<TagEntity> validTags = tagRepository.findAllById(tagIds);
+        if (validTags.size() != tagIds.size()) {
+            throw new ServiceException(ResPermissionErrorCode.TAG_NOT_FOUND);
+        }
+        boolean allBelongToGroup = validTags.stream().allMatch(tag -> groupId.equals(tag.getGroupId()));
+        if (!allBelongToGroup) {
+            throw new ServiceException(ResPermissionErrorCode.TAG_NOT_FOUND);
+        }
+
+        Integer defaultActions = groupResConfigRepository.findByGroupId(groupId)
+                .map(GroupResConfigEntity::getDefaultMemberActionsMask)
+                .orElse(ResourceAction.DEFAULT_MEMBER_ACTIONS);
+
+        for (TagEntity tag : validTags) {
+            ResolvedTagPermission resolved = resolveTagPermission(tag, defaultActions);
+            boolean canMount = (resolved.resourceMountMode == ResourceMountMode.ALL ||
+                    (resolved.resourceMountMode == ResourceMountMode.WHITELIST && resolved.resourceMountSpecifiedUsers.contains(userId)) ||
+                    (resolved.resourceMountMode == ResourceMountMode.BLACKLIST && !resolved.resourceMountSpecifiedUsers.contains(userId)));
+            if (!canMount) {
+                log.warn("resource mount denied userId={} groupId={} tagId={} mode={}",
+                        userId, groupId, tag.getTagId(), resolved.resourceMountMode);
+                throw new ServiceException(ResPermissionErrorCode.TAG_MOUNT_DENIED);
+            }
+        }
+    }
+
+    @Override
+    public void assertResourceMountPermission(String userId, String groupId, GroupRoleType groupRole, List<String> tagIds) {
+        if (!StringUtils.hasText(groupId) || groupId.startsWith(ResourceConstants.PERSONAL_GROUP_PREFIX)) {
+            return;
+        }
+        if (groupRole == GroupRoleType.ADMIN || groupRole == GroupRoleType.OWNER) {
+            return;
+        }
+        if (tagIds == null || tagIds.isEmpty()) {
+            return;
+        }
+
         List<TagEntity> tags = tagRepository.findAllById(tagIds);
 
         Integer defaultActions = groupResConfigRepository.findByGroupId(groupId)

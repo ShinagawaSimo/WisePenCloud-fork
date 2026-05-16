@@ -191,14 +191,16 @@ public class TagServiceImpl implements ITagService {
 
         // 是否有权限变更
         boolean isPermissionChanged = false;
+        boolean isMountModeChanged = false;
+        boolean isMountListChanged = false;
         if (tagUpdateRequest.getAclGrantMode() != null && !tagUpdateRequest.getAclGrantMode().equals(entity.getAclGrantMode())) {
             isPermissionChanged = true;
         }
         if (tagUpdateRequest.getResourceMountMode() != null && !tagUpdateRequest.getResourceMountMode().equals(entity.getResourceMountMode())) {
-            isPermissionChanged = true;
+            isMountModeChanged = true;
         }
         if (tagUpdateRequest.getResourceMountSpecifiedUsers() != null && !tagUpdateRequest.getResourceMountSpecifiedUsers().equals(entity.getResourceMountSpecifiedUsers())) {
-            isPermissionChanged = true;
+            isMountListChanged = true;
         }
         if (tagUpdateRequest.getAclGrantSpecifiedUsers() != null && !tagUpdateRequest.getAclGrantSpecifiedUsers().equals(entity.getAclGrantSpecifiedUsers())) {
             isPermissionChanged = true;
@@ -207,8 +209,8 @@ public class TagServiceImpl implements ITagService {
             isPermissionChanged = true;
         }
 
-        if (groupID.startsWith(ResourceConstants.PERSONAL_GROUP_PREFIX) && isPermissionChanged){
-            throw new ServiceException(CANNOT_SET_TAG_NODE_VISIBILITY); // 个人组标签不能设置标签权限
+        if (groupID.startsWith(ResourceConstants.PERSONAL_GROUP_PREFIX) && (isPermissionChanged || isMountModeChanged || isMountListChanged)){
+            throw new ServiceException(CANNOT_SET_VISIBILITY); // 个人组标签不能设置标签权限
         }
 
         boolean nameChanged = newName != null && !newName.equals(entity.getTagName());

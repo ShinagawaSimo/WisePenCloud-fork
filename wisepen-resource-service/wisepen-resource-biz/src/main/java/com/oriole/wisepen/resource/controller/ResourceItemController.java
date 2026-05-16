@@ -78,6 +78,7 @@ public class ResourceItemController {
                 resourceService.assertResourceMountPermission(userId, req.getGroupId(), groupRole, req.getTagIds());
             }
         }
+        resourceService.assertResourceMountPermission(userId, req.getGroupId(), groupRole, req.getTagIds());
         resourceService.updateResourceTags(req);
         return R.ok();
     }
