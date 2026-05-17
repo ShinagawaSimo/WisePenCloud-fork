@@ -1,11 +1,13 @@
 package com.oriole.wisepen.skill.service.impl;
 
+import com.oriole.wisepen.common.core.domain.IResult;
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.common.core.exception.ServiceException;
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitReqDTO;
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
 import com.oriole.wisepen.file.storage.api.enums.StorageSceneEnum;
 import com.oriole.wisepen.file.storage.api.feign.RemoteStorageService;
+import com.oriole.wisepen.skill.exception.SkillError;
 import com.oriole.wisepen.skill.service.ISkillStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,12 +32,12 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
 
     @Override
     public String getDownloadUrl(String objectKey, Long durationSeconds) {
-        return unwrap(remoteStorageService.getDownloadUrl(objectKey, durationSeconds), "获取 Skill 文件下载地址失败");
+        return unwrap(remoteStorageService.getDownloadUrl(objectKey, durationSeconds), SkillError.SKILL_DOWNLOAD_URL_GET_FAILED);
     }
 
     @Override
     public void deleteFiles(List<String> objectKeys) {
-        unwrapVoid(remoteStorageService.deleteFiles(objectKeys), "删除 Skill 文件失败");
+        unwrapVoid(remoteStorageService.deleteFiles(objectKeys), SkillError.SKILL_FILE_DELETE_FAILED);
     }
 
     private UploadInitRespDTO initUpload(String objectKey, String extension, String md5, Long expectedSize) {
@@ -45,7 +47,7 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
                 .scene(StorageSceneEnum.PRIVATE_DOC)
                 .objectKey(objectKey)
                 .expectedSize(expectedSize)
-                .build()), "初始化 Skill 文件上传失败");
+                .build()), SkillError.SKILL_UPLOAD_INIT_FAILED);
     }
 
     private String buildObjectKey(String skillId, String version, String relativePath) {
@@ -60,16 +62,25 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
         return relativePath.substring(dotIndex + 1);
     }
 
-    private <T> T unwrap(R<T> response, String message) {
-        if (response == null || response.getData() == null) {
+    private <T> T unwrap(R<T> response, IResult message) {
+        if (response == null) {
+            throw new ServiceException(message);
+        }
+        if (response.getCode() == null || response.getCode() != 200) {
+            throw new ServiceException(message, response.getMsg());
+        }
+        if (response.getData() == null) {
             throw new ServiceException(message);
         }
         return response.getData();
     }
 
-    private void unwrapVoid(R<Void> response, String message) {
+    private void unwrapVoid(R<Void> response, IResult message) {
         if (response == null) {
             throw new ServiceException(message);
+        }
+        if (response.getCode() == null || response.getCode() != 200) {
+            throw new ServiceException(message, response.getMsg());
         }
     }
 }

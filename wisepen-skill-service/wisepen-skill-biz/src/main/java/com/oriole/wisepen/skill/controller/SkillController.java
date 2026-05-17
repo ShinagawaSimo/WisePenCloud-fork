@@ -13,7 +13,7 @@ import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillManifestUploadInitReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
-import com.oriole.wisepen.skill.exception.SkillErrorCode;
+import com.oriole.wisepen.skill.exception.SkillError;
 import com.oriole.wisepen.skill.service.ISkillService;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionReqDTO;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionResDTO;
@@ -86,7 +86,7 @@ public class SkillController {
                 skillId, SecurityContextHolder.getUserId(), SecurityContextHolder.getGroupRoleMap()
         )).getData();
         if (permission == null || permission.getResourceAccessRole() != ResourceAccessRole.OWNER) {
-            throw new ServiceException(SkillErrorCode.SKILL_OWNER_MISMATCH);
+            throw new ServiceException(SkillError.SKILL_OWNER_MISMATCH);
         }
     }
 }

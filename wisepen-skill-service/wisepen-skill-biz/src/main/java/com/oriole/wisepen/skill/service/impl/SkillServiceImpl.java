@@ -15,7 +15,7 @@ import com.oriole.wisepen.skill.domain.base.SkillAssetMetaBase;
 import com.oriole.wisepen.skill.domain.base.SkillVersionBase;
 import com.oriole.wisepen.skill.enums.SkillAuditStatusEnum;
 import com.oriole.wisepen.skill.enums.SkillStatusEnum;
-import com.oriole.wisepen.skill.exception.SkillErrorCode;
+import com.oriole.wisepen.skill.exception.SkillError;
 import com.oriole.wisepen.skill.repository.SkillRepository;
 import com.oriole.wisepen.skill.service.ISkillService;
 import com.oriole.wisepen.skill.service.ISkillStorageService;
@@ -25,6 +25,7 @@ import com.oriole.wisepen.resource.feign.RemoteResourceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -44,6 +45,9 @@ public class SkillServiceImpl implements ISkillService {
                 .ownerId(userId)
                 .build();
         String skillId = remoteResourceService.createResource(resourceReq).getData();
+        if (!StringUtils.hasText(skillId)) {
+            throw new ServiceException(SkillError.SKILL_RESOURCE_REGISTER_FAILED);
+        }
 
         SkillEntity entity = new SkillEntity();
         entity.setSkillId(skillId);
@@ -70,7 +74,7 @@ public class SkillServiceImpl implements ISkillService {
     @Override
     public void updateSkill(SkillUpdateReqDTO dto) {
         SkillEntity entity = skillRepository.findBySkillId(dto.getSkillId())
-                .orElseThrow(() -> new ServiceException(SkillErrorCode.SKILL_NOT_FOUND));
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_NOT_FOUND));
         if (dto.getSkillName() != null) {
             entity.setSkillName(dto.getSkillName());
         }
@@ -83,7 +87,7 @@ public class SkillServiceImpl implements ISkillService {
     @Override
     public SkillInfoRespDTO getSkillInfo(String skillId) {
         SkillEntity entity = skillRepository.findBySkillId(skillId)
-                .orElseThrow(() -> new ServiceException(SkillErrorCode.SKILL_NOT_FOUND));
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_NOT_FOUND));
         SkillInfoRespDTO response = BeanUtil.copyProperties(entity, SkillInfoRespDTO.class);
         if (entity.getCurrentVersionInfo() != null) {
             SkillVersionBase versionBase = new SkillVersionBase();
@@ -103,7 +107,7 @@ public class SkillServiceImpl implements ISkillService {
     public UploadInitRespDTO initManifestUpload(SkillManifestUploadInitReqDTO dto) {
         validateVersion(dto.getVersion());
         SkillEntity entity = skillRepository.findBySkillId(dto.getSkillId())
-                .orElseThrow(() -> new ServiceException(SkillErrorCode.SKILL_NOT_FOUND));
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_NOT_FOUND));
 
         UploadInitRespDTO response = skillStorageService.initManifestUpload(
                 dto.getSkillId(), dto.getVersion(), dto.getMd5(), dto.getExpectedSize()
@@ -120,7 +124,7 @@ public class SkillServiceImpl implements ISkillService {
         validateVersion(dto.getVersion());
         validateRelativePath(dto.getRelativePath());
         SkillEntity entity = skillRepository.findBySkillId(dto.getSkillId())
-                .orElseThrow(() -> new ServiceException(SkillErrorCode.SKILL_NOT_FOUND));
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_NOT_FOUND));
 
         UploadInitRespDTO response = skillStorageService.initAssetUpload(
                 dto.getSkillId(), dto.getVersion(), dto.getRelativePath(), dto.getMd5(), dto.getExpectedSize()
@@ -160,14 +164,14 @@ public class SkillServiceImpl implements ISkillService {
     private void validateVersion(String version) {
         if (version == null || version.isBlank() || version.contains("/") || version.contains("\\")
                 || ".".equals(version) || "..".equals(version)) {
-            throw new ServiceException(SkillErrorCode.SKILL_VERSION_INVALID);
+            throw new ServiceException(SkillError.SKILL_VERSION_INVALID);
         }
     }
 
     private void validateRelativePath(String relativePath) {
         if (relativePath == null || relativePath.isBlank() || relativePath.startsWith("/")
                 || relativePath.contains("\\") || List.of(relativePath.split("/")).contains("..")) {
-            throw new ServiceException(SkillErrorCode.SKILL_RELATIVE_PATH_INVALID);
+            throw new ServiceException(SkillError.SKILL_RELATIVE_PATH_INVALID);
         }
     }
 }
