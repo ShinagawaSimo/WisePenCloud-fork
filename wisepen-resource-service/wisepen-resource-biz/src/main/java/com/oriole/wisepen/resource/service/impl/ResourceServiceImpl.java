@@ -564,7 +564,7 @@ public class ResourceServiceImpl implements IResourceService {
             tagService.getTagTree(personalGroupId);
             String pathTagID = !StringUtils.hasText(dto.getPathTagId()) ?
                     tagRepository.findByGroupIdAndParentIdAndTagName(
-                                personalGroupId, "0", ResourceConstants.ROOT_TAG_NAME)
+                                ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), "0", ResourceConstants.ROOT_TAG_NAME)
                         .orElseThrow(() -> new ServiceException(ResourceError.TAG_NODE_NOT_FOUND)).getTagId()
                     :
                     dto.getPathTagId();
