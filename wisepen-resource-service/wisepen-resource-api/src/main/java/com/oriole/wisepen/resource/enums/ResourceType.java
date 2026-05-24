@@ -28,7 +28,7 @@ public enum ResourceType {
     XLSX(8, "XLSX", "xlsx"),
     SKILL(9, "SKILL", "skill"),
     UNKNOWN(10, "UNKNOWN", "unknown");
-    
+
     @EnumValue
     @JsonValue
     private final int code;
