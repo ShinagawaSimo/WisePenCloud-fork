@@ -2,17 +2,28 @@ package com.oriole.wisepen.skill.feign;
 
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
+import com.oriole.wisepen.skill.domain.dto.PublishedSkillSnapshotRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillAssetUploadInitReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillCurrentDraftRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillDraftVersionCreateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillFilesFullUpdateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillFilesFullUpdateRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillManifestUploadInitReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillOfflineReqDTO;
 import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionBaseListRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionListReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionPublishReqDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.List;
 
 @Tag(name = "内部 Skill 服务", description = "提供给其他微服务的 Skill Feign 接口")
 @FeignClient(contextId = "remoteSkillService", value = "wisepen-skill-service")
@@ -37,4 +48,25 @@ public interface RemoteSkillService {
     @Operation(summary = "初始化 Skill 资产上传", description = "为指定 Skill 版本初始化资产上传")
     @PostMapping("/internal/skill/initAssetUpload")
     R<UploadInitRespDTO> initAssetUpload(@RequestBody SkillAssetUploadInitReqDTO dto);
+
+    @PostMapping("/internal/skill/createDraftVersion")
+    R<String> createDraftVersion(@RequestBody SkillDraftVersionCreateReqDTO dto);
+
+    @PostMapping("/internal/skill/listSkillVersions")
+    R<List<SkillVersionBaseListRespDTO>> listSkillVersions(@RequestBody SkillVersionListReqDTO dto);
+
+    @PostMapping("/internal/skill/getCurrentDraftVersion")
+    R<SkillCurrentDraftRespDTO> getCurrentDraftVersion(@RequestBody SkillVersionListReqDTO dto);
+
+    @PostMapping("/internal/skill/publishSkillVersion")
+    R<Void> publishSkillVersion(@RequestBody SkillVersionPublishReqDTO dto);
+
+    @PostMapping("/internal/skill/offlineSkill")
+    R<Void> offlineSkill(@RequestBody SkillOfflineReqDTO dto);
+
+    @PostMapping("/internal/skill/getPublishedSkillSnapshot")
+    R<PublishedSkillSnapshotRespDTO> getPublishedSkillSnapshot(@RequestBody SkillVersionListReqDTO dto);
+
+    @PostMapping("/internal/skill/fullUpdateSkillFiles")
+    R<SkillFilesFullUpdateRespDTO> fullUpdateSkillFiles(@RequestBody SkillFilesFullUpdateReqDTO dto);
 }
