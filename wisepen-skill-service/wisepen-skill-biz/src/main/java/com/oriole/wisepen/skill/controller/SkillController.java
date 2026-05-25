@@ -4,21 +4,30 @@ import com.oriole.wisepen.common.core.context.SecurityContextHolder;
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.common.core.domain.enums.BusinessType;
 import com.oriole.wisepen.common.core.exception.ServiceException;
-import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillAssetUploadInitReqDTO;
 import com.oriole.wisepen.common.log.annotation.Log;
 import com.oriole.wisepen.common.security.annotation.CheckLogin;
-import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillManifestUploadInitReqDTO;
-import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
-import com.oriole.wisepen.skill.exception.SkillError;
-import com.oriole.wisepen.skill.service.ISkillService;
+import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionReqDTO;
 import com.oriole.wisepen.resource.domain.dto.ResourceCheckPermissionResDTO;
 import com.oriole.wisepen.resource.enums.ResourceAccessRole;
 import com.oriole.wisepen.resource.feign.RemoteResourceService;
+import com.oriole.wisepen.skill.domain.dto.PublishedSkillSnapshotRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillAssetUploadInitReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillCreateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillCurrentDraftRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillDraftVersionCreateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillFilesFullUpdateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillFilesFullUpdateRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillInfoGetReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillInfoRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillManifestUploadInitReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillOfflineReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillUpdateReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionBaseListRespDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionListReqDTO;
+import com.oriole.wisepen.skill.domain.dto.SkillVersionPublishReqDTO;
+import com.oriole.wisepen.skill.exception.SkillError;
+import com.oriole.wisepen.skill.service.ISkillService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +37,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Skill 管理", description = "Skill 主档的创建、更新与查询")
+import java.util.List;
+
+@Tag(name = "Skill 管理", description = "Skill 主档、版本与文件更新管理")
 @RestController
 @RequestMapping("/skill")
 @RequiredArgsConstructor
@@ -56,12 +67,10 @@ public class SkillController {
         return R.ok();
     }
 
-    @Operation(summary = "查询 Skill 详情", description = "查询 Skill 主档与核心目录信息")
+    @Operation(summary = "查询 Skill 详情", description = "查询 Skill 主档与版本信息")
     @PostMapping("/getSkillInfo")
     public R<SkillInfoRespDTO> getSkillInfo(@Validated @RequestBody SkillInfoGetReqDTO dto) {
-        remoteResourceService.checkResPermission(new ResourceCheckPermissionReqDTO(
-                dto.getSkillId(), SecurityContextHolder.getUserId(), SecurityContextHolder.getGroupRoleMap()
-        ));
+        assertSkillReadable(dto.getSkillId());
         return R.ok(skillService.getSkillInfo(dto.getSkillId()));
     }
 
@@ -79,6 +88,62 @@ public class SkillController {
     public R<UploadInitRespDTO> initAssetUpload(@Validated @RequestBody SkillAssetUploadInitReqDTO dto) {
         assertSkillOwner(dto.getSkillId());
         return R.ok(skillService.initAssetUpload(dto));
+    }
+
+    @PostMapping("/createDraftVersion")
+    public R<String> createDraftVersion(@Validated @RequestBody SkillDraftVersionCreateReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
+        return R.ok(skillService.createDraftVersion(dto));
+    }
+
+    @PostMapping("/listSkillVersions")
+    public R<List<SkillVersionBaseListRespDTO>> listSkillVersions(@Validated @RequestBody SkillVersionListReqDTO dto) {
+        assertSkillReadable(dto.getSkillId());
+        return R.ok(skillService.listSkillVersions(dto));
+    }
+
+    @PostMapping("/getCurrentDraftVersion")
+    public R<SkillCurrentDraftRespDTO> getCurrentDraftVersion(@Validated @RequestBody SkillVersionListReqDTO dto) {
+        assertSkillReadable(dto.getSkillId());
+        return R.ok(skillService.getCurrentDraftVersion(dto));
+    }
+
+    @PostMapping("/publishSkillVersion")
+    public R<Void> publishSkillVersion(@Validated @RequestBody SkillVersionPublishReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
+        skillService.publishSkillVersion(dto.getSkillId(), dto.getVersion());
+        return R.ok();
+    }
+
+    @PostMapping("/offlineSkill")
+    public R<Void> offlineSkill(@Validated @RequestBody SkillOfflineReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
+        skillService.offlineSkill(dto.getSkillId());
+        return R.ok();
+    }
+
+    @PostMapping("/getPublishedSkillSnapshot")
+    public R<PublishedSkillSnapshotRespDTO> getPublishedSkillSnapshot(@Validated @RequestBody SkillVersionListReqDTO dto) {
+        assertSkillReadable(dto.getSkillId());
+        return R.ok(skillService.getPublishedSkillSnapshot(dto.getSkillId()));
+    }
+
+    @PostMapping("/fullUpdateSkillFiles")
+    public R<SkillFilesFullUpdateRespDTO> fullUpdateSkillFiles(@Validated @RequestBody SkillFilesFullUpdateReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
+        return R.ok(skillService.fullUpdateSkillFiles(dto));
+    }
+
+    @PostMapping("/updateDraftVersionFiles")
+    public R<SkillFilesFullUpdateRespDTO> updateDraftVersionFiles(@Validated @RequestBody SkillFilesFullUpdateReqDTO dto) {
+        assertSkillOwner(dto.getSkillId());
+        return R.ok(skillService.fullUpdateSkillFiles(dto));
+    }
+
+    private void assertSkillReadable(String skillId) {
+        remoteResourceService.checkResPermission(new ResourceCheckPermissionReqDTO(
+                skillId, SecurityContextHolder.getUserId(), SecurityContextHolder.getGroupRoleMap()
+        ));
     }
 
     private void assertSkillOwner(String skillId) {

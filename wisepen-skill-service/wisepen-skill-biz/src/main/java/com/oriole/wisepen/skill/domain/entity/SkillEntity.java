@@ -9,6 +9,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -22,6 +24,14 @@ public class SkillEntity extends SkillInfoBase {
     private String storageBizTag;
 
     private SkillVersionEntity currentVersionInfo;
+
+    private String currentPublishedVersion;
+
+    private String currentDraftVersion;
+
+    private String draftBaseVersion;
+
+    private List<SkillVersionEntity> versions = new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createTime;
