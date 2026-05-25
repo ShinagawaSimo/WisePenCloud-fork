@@ -581,11 +581,10 @@ public class ResourceServiceImpl implements IResourceService {
             log.warn("resourceItem compensated resourceId={}", entity.getResourceId(), e);
             throw e;
         }
-        // 同步初始化互动信息记录，确保新资源首读前就有明确的 readCount = 0
-        ResourceInteractInfoEntity interactInfo = new ResourceInteractInfoEntity();
-        interactInfo.setResourceId(entity.getResourceId());
-        interactInfo.setReadCount(0L);
-        resourceInteractInfoRepository.save(interactInfo);
+        // 同步初始化互动信息记录
+        resourceInteractionInfoRepository.save(new ResourceInteractionInfoEntity(entity.getResourceId()));
+        // 同步初始化资源搜索记录
+        searchSyncService.syncResourceMetadata(entity, EnumSet.of(UpsertField.RESOURCE_TYPE, UpsertField.RESOURCE_NAME, UpsertField.ACL));
 
         log.info("resource created resourceId={} ownerId={} resourceType={} pathTagId={}",
                 entity.getResourceId(), dto.getOwnerId(), dto.getResourceType(), dto.getPathTagId());
