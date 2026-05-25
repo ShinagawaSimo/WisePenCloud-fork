@@ -26,7 +26,8 @@ public enum ResourceType {
     PPTX(6, "PPTX", "pptx"),
     XLS(7, "XLS", "xls"),
     XLSX(8, "XLSX", "xlsx"),
-    UNKNOWN(9, "UNKNOWN", "unknown");
+    SKILL(9, "SKILL", "skill"),
+    UNKNOWN(10, "UNKNOWN", "unknown");
 
     @EnumValue
     @JsonValue
