@@ -20,8 +20,6 @@ public enum SkillError implements IResult {
     SKILL_VERSION_INVALID(9131, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.INVALID), "Skill 版本不合法"),
     SKILL_RELATIVE_PATH_INVALID(9132, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.INVALID), "Skill 相对路径不合法"),
     SKILL_UPLOAD_INIT_FAILED(9141, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.FAILED), "初始化 Skill 文件上传失败"),
-    SKILL_DOWNLOAD_URL_GET_FAILED(9142, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.FAILED), "获取 Skill 文件下载地址失败"),
-    SKILL_FILE_DELETE_FAILED(9143, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.FAILED), "删除 Skill 文件失败"),
     SKILL_RESOURCE_REGISTER_FAILED(9144, new ResultKey(BusinessDomain.SKILL, SkillSubject.SKILL, ErrorReason.FAILED), "注册 Skill 资源失败");
 
     private final Integer code;

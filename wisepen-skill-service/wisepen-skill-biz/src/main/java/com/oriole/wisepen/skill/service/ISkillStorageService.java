@@ -9,7 +9,4 @@ public interface ISkillStorageService {
 
     UploadInitRespDTO initAssetUpload(String skillId, String version, String relativePath, String md5, Long expectedSize);
 
-    String getDownloadUrl(String objectKey, Long durationSeconds);
-
-    void deleteFiles(List<String> objectKeys);
 }

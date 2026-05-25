@@ -30,16 +30,6 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
         return initUpload(buildObjectKey(skillId, version, relativePath), extractExtension(relativePath), md5, expectedSize);
     }
 
-    @Override
-    public String getDownloadUrl(String objectKey, Long durationSeconds) {
-        return unwrap(remoteStorageService.getDownloadUrl(objectKey, durationSeconds), SkillError.SKILL_DOWNLOAD_URL_GET_FAILED);
-    }
-
-    @Override
-    public void deleteFiles(List<String> objectKeys) {
-        unwrapVoid(remoteStorageService.deleteFiles(objectKeys), SkillError.SKILL_FILE_DELETE_FAILED);
-    }
-
     private UploadInitRespDTO initUpload(String objectKey, String extension, String md5, Long expectedSize) {
         return unwrap(remoteStorageService.initUpload(UploadInitReqDTO.builder()
                 .md5(md5)
@@ -75,12 +65,4 @@ public class SkillStorageServiceImpl implements ISkillStorageService {
         return response.getData();
     }
 
-    private void unwrapVoid(R<Void> response, IResult message) {
-        if (response == null) {
-            throw new ServiceException(message);
-        }
-        if (response.getCode() == null || response.getCode() != 200) {
-            throw new ServiceException(message, response.getMsg());
-        }
-    }
 }
