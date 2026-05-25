@@ -19,22 +19,22 @@ import com.oriole.wisepen.resource.domain.dto.res.ResourceItemResponse;
 import com.oriole.wisepen.resource.domain.entity.GroupResConfigEntity;
 import com.oriole.wisepen.resource.domain.entity.ResourceItemEntity;
 import com.oriole.wisepen.resource.domain.entity.TagEntity;
-import com.oriole.wisepen.resource.enums.ResourceAccessRole;
-import com.oriole.wisepen.resource.enums.ResourceAction;
-import com.oriole.wisepen.resource.enums.ResourceSortBy;
-import com.oriole.wisepen.resource.enums.AclGrantMode;
+import com.oriole.wisepen.resource.enums.*;
 import com.oriole.wisepen.resource.event.TagChangedEvent;
 import com.oriole.wisepen.resource.event.TagDeletedEvent;
 import com.oriole.wisepen.resource.event.TagTrashedEvent;
 import com.oriole.wisepen.resource.exception.ResourceError;
+import com.oriole.wisepen.resource.domain.entity.ResourceInteractionInfoEntity;
 import com.oriole.wisepen.resource.repository.CustomResourceItemRepository;
 import com.oriole.wisepen.resource.repository.GroupResConfigRepository;
+import com.oriole.wisepen.resource.repository.ResourceInteractionInfoRepository;
 import com.oriole.wisepen.resource.repository.ResourceItemRepository;
+import com.oriole.wisepen.resource.repository.ResourceUserInteractRecordRepository;
 import com.oriole.wisepen.resource.repository.TagRepository;
-import com.oriole.wisepen.resource.enums.FileOrganizationLogic;
 import com.oriole.wisepen.resource.mq.IEventPublisher;
 import com.oriole.wisepen.resource.service.IGroupResService;
 import com.oriole.wisepen.resource.service.IResourceService;
+import com.oriole.wisepen.resource.service.ISearchSyncService;
 import com.oriole.wisepen.resource.service.ITagService;
 import com.oriole.wisepen.user.api.domain.base.UserDisplayBase;
 import com.oriole.wisepen.user.api.feign.RemoteUserService;
@@ -50,6 +50,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+
 import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.util.StringUtils;
 
@@ -69,12 +70,15 @@ public class ResourceServiceImpl implements IResourceService {
     private final ResourceItemRepository resourceItemRepository;
     private final CustomResourceItemRepository customResourceItemRepository;
     private final GroupResConfigRepository groupResConfigRepository;
+    private final ResourceInteractionInfoRepository resourceInteractionInfoRepository;
+    private final ResourceUserInteractRecordRepository resourceUserInteractRecordRepository;
 
     private final IEventPublisher eventPublisher;
     private final MongoTemplate mongoTemplate;
 
     private final IGroupResService groupResService;
     private final ITagService tagService;
+    private final ISearchSyncService searchSyncService;
 
     private final RemoteUserService remoteUserService;
 
@@ -136,6 +140,8 @@ public class ResourceServiceImpl implements IResourceService {
         String oldName = entity.getResourceName();
         entity.setResourceName(req.getNewName());
         resourceItemRepository.save(entity);
+        searchSyncService.syncResourceMetadata(entity, EnumSet.of(UpsertField.RESOURCE_NAME));
+
         log.info("resource renamed resourceId={} oldName={} newName={}",
                 entity.getResourceId(), oldName, req.getNewName());
     }
@@ -232,6 +238,37 @@ public class ResourceServiceImpl implements IResourceService {
             return;
         }
         eventPublisher.publishAclRecalculateEvent(entity.getResourceId(), "RESOURCE_TAGS_CHANGED");
+    }
+
+    @Override
+    public void assertResourceMountPermission(String userId, String groupId, GroupRoleType groupRole, List<String> tagIds) {
+        if (!StringUtils.hasText(groupId) || groupId.startsWith(ResourceConstants.PERSONAL_GROUP_PREFIX)) {
+            return;
+        }
+        if (groupRole == GroupRoleType.ADMIN || groupRole == GroupRoleType.OWNER) {
+            return;
+        }
+        if (tagIds == null || tagIds.isEmpty()) {
+            return;
+        }
+
+        List<TagEntity> tags = tagRepository.findAllById(tagIds);
+
+        Integer defaultActions = groupResConfigRepository.findByGroupId(groupId)
+                .map(GroupResConfigEntity::getDefaultMemberActionsMask)
+                .orElse(ResourceAction.DEFAULT_MEMBER_ACTIONS);
+
+        for (TagEntity tag : tags) {
+            ResolvedTagPermission resolved = resolveTagPermission(tag, defaultActions);
+            boolean canMount = (resolved.resourceMountMode == ResourceMountMode.ALL ||
+                    (resolved.resourceMountMode == ResourceMountMode.WHITELIST && resolved.resourceMountSpecifiedUsers.contains(userId)) ||
+                    (resolved.resourceMountMode == ResourceMountMode.BLACKLIST && !resolved.resourceMountSpecifiedUsers.contains(userId)));
+            if (!canMount) {
+                log.warn("resource mount denied userId={} groupId={} tagId={} mode={}",
+                        userId, groupId, tag.getTagId(), resolved.resourceMountMode);
+                throw new ServiceException(ResourceError.TAG_MOUNT_DENIED);
+            }
+        }
     }
 
     @Override
@@ -369,6 +406,11 @@ public class ResourceServiceImpl implements IResourceService {
                 resp.setSpecifiedUsersGrantedActions(userActionsMap);
             }
         }
+
+        // 新增互动信息
+        ResourceInteractionInfoEntity resourceInteractionInfo = resourceInteractionInfoRepository.findById(entity.getResourceId())
+            .orElseGet(ResourceInteractionInfoEntity::new);
+        resp.setResourceInteractionInfo(resourceInteractionInfo);
         return resp;
     }
 
@@ -444,6 +486,18 @@ public class ResourceServiceImpl implements IResourceService {
             return resp;
         }).collect(Collectors.toList());
 
+        // 批量聚合互动信息，避免 N+1 查询
+        List<String> resourceIds = entityPage.getContent().stream()
+                .map(ResourceItemEntity::getResourceId)
+                .collect(Collectors.toList());
+        Map<String, ResourceInteractionInfoEntity> interactInfoMap = resourceInteractionInfoRepository.findByResourceIdIn(resourceIds)
+                .stream()
+                .collect(Collectors.toMap(ResourceInteractionInfoEntity::getResourceId, e -> e));
+
+        responses.forEach(resp -> {
+            resp.setResourceInteractionInfo(interactInfoMap.getOrDefault(resp.getResourceId(), new ResourceInteractionInfoEntity()));
+        });
+
         PageR<ResourceItemResponse> pageR = new PageR<>(entityPage.getTotalElements(), page, size);
         pageR.addAll(responses);
         return pageR;
@@ -481,6 +535,11 @@ public class ResourceServiceImpl implements IResourceService {
             log.warn("resourceItem compensated resourceId={}", entity.getResourceId(), e);
             throw e;
         }
+        // 同步初始化互动信息记录
+        resourceInteractionInfoRepository.save(new ResourceInteractionInfoEntity(entity.getResourceId()));
+        // 同步初始化资源搜索记录
+        searchSyncService.syncResourceMetadata(entity, EnumSet.of(UpsertField.RESOURCE_TYPE, UpsertField.RESOURCE_NAME, UpsertField.ACL));
+
         log.info("resource created resourceId={} ownerId={} resourceType={} pathTagId={}",
                 entity.getResourceId(), dto.getOwnerId(), dto.getResourceType(), dto.getPathTagId());
         return entity.getResourceId();
@@ -521,8 +580,18 @@ public class ResourceServiceImpl implements IResourceService {
 
         long deletedCount = mongoTemplate.remove(query, RESOURCE_TRASH_COLLECTION).getDeletedCount();
         if (deletedCount > 0) {
+            List<String> deletedResourceIds = expiredResources.stream()
+                .map(ResourceItemEntity::getResourceId)
+                .collect(Collectors.toList());
+            resourceInteractionInfoRepository.deleteAllByResourceIdIn(deletedResourceIds);
+            resourceUserInteractRecordRepository.deleteAllByResourceIdIn(deletedResourceIds);
+
             log.info("resources deleted mode=hard count={} resourceIds={}",
                     deletedCount, summarizeIds(resourceIds));
+            // 删除索引
+            for (ResourceItemEntity resource : expiredResources) {
+                searchSyncService.deleteResourceIndex(resource.getResourceId());
+            }
             // 发送 Kafka 广播，通知文件存储等下游微服务抹除物理文件
             eventPublisher.publishResDeletedEvent(expiredResources);
         }
@@ -638,7 +707,7 @@ public class ResourceServiceImpl implements IResourceService {
     }
 
     @Override
-    public void calculateResourceGroupAcl(String resourceId) {
+    public Optional<ResourceItemEntity> calculateResourceGroupAcl(String resourceId) {
         long start = System.currentTimeMillis();
         log.debug("aclRecalc started resourceId={}", resourceId);
         // 获取资源绑定记录
@@ -647,7 +716,7 @@ public class ResourceServiceImpl implements IResourceService {
 
         if (bindEntity == null) {
             log.warn("aclRecalc skipped resourceId={}", resourceId);
-            return;
+            return Optional.empty();
         }
 
         Map<String, ComputedGroupAcl> computedGroupAcls = new HashMap<>();
@@ -657,10 +726,20 @@ public class ResourceServiceImpl implements IResourceService {
                 if (groupBind.getTagIds() == null || groupBind.getTagIds().isEmpty()) continue;
                 if (groupBind.getGroupId().startsWith(ResourceConstants.PERSONAL_GROUP_PREFIX)) continue; // 个人Tag不参与计算Acl
 
-                // 提取首标并查询
-                String primaryTagId = groupBind.getTagIds().getFirst();
-                TagEntity primaryTag = tagRepository.findById(primaryTagId).orElse(null);
+                // 查询所有 Tag 详情
+                List<TagEntity> tags = tagRepository.findAllById(groupBind.getTagIds());
+
+                // Tag 详情传递至 groupBind，供后续使用
+                // TODO: groupBind.tags 暂无后续使用
+                groupBind.setTags(tags);
+
+                // 提取首标
+                TagEntity primaryTag = tags.stream().filter(
+                        tagEntity -> tagEntity.getTagId().equals(groupBind.getTagIds().getFirst())
+                ).findFirst().orElse(null);
+
                 if (primaryTag == null) continue;
+
 
                 Integer defaultActions = groupResConfigRepository.findByGroupId(groupBind.getGroupId())
                         .map(GroupResConfigEntity::getDefaultMemberActionsMask)
@@ -683,11 +762,11 @@ public class ResourceServiceImpl implements IResourceService {
                         break;
                     case WHITELIST:
                         computed.setBaseMask(0);
-                        resolved.specifiedUsers.forEach(uid -> computed.getUserMasks().put(uid, effectiveMask));
+                        resolved.aclGrantSpecifiedUsers.forEach(uid -> computed.getUserMasks().put(uid, effectiveMask));
                         break;
                     case BLACKLIST:
                         computed.setBaseMask(effectiveMask);
-                        resolved.specifiedUsers.forEach(uid -> computed.getUserMasks().put(uid, 0));
+                        resolved.aclGrantSpecifiedUsers.forEach(uid -> computed.getUserMasks().put(uid, 0));
                         break;
                 }
                 computedGroupAcls.put(groupBind.getGroupId(), computed);
@@ -701,6 +780,10 @@ public class ResourceServiceImpl implements IResourceService {
         mongoTemplate.updateFirst(query, update, ResourceItemEntity.class);
         log.debug("aclRecalc finished resourceId={} groupCount={} costMs={}",
                 resourceId, computedGroupAcls.size(), System.currentTimeMillis() - start);
+
+        bindEntity.setComputedGroupAcls(computedGroupAcls);
+        bindEntity.setUpdateTime(LocalDateTime.now());
+        return Optional.of(bindEntity);
     }
 
     @Override
@@ -761,8 +844,8 @@ public class ResourceServiceImpl implements IResourceService {
 
                 // 使用 AclGrantMode 判断用户是否能获取当前组的权限掩码
                 boolean isEligibleForMask = (resolved.aclGrantMode == AclGrantMode.ALL ||
-                        (resolved.aclGrantMode == AclGrantMode.WHITELIST && resolved.specifiedUsers.contains(dto.getUserId().toString())) ||
-                        (resolved.aclGrantMode == AclGrantMode.BLACKLIST && !resolved.specifiedUsers.contains(dto.getUserId().toString())));
+                    (resolved.aclGrantMode == AclGrantMode.WHITELIST && resolved.aclGrantSpecifiedUsers.contains(dto.getUserId().toString())) ||
+                    (resolved.aclGrantMode == AclGrantMode.BLACKLIST && !resolved.aclGrantSpecifiedUsers.contains(dto.getUserId().toString())));
 
                 if (isEligibleForMask) {
                     // 只要有一个组能下发权限，基础身份就是 Member
@@ -805,12 +888,17 @@ public class ResourceServiceImpl implements IResourceService {
     @Data
     private static class ResolvedTagPermission {
         AclGrantMode aclGrantMode;
-        List<String> specifiedUsers = Collections.emptyList();
+        List<String> aclGrantSpecifiedUsers = Collections.emptyList();
         Integer grantedActionsMask;
+        ResourceMountMode resourceMountMode;
+        List<String> resourceMountSpecifiedUsers = Collections.emptyList();
 
         boolean isAclGrantModeResolved() { return aclGrantMode != null; }
         boolean isActionsResolved() { return grantedActionsMask != null; }
-        boolean isFullyResolved() { return isAclGrantModeResolved() && isActionsResolved(); }
+        boolean isResourceMountModeResolved() { return resourceMountMode != null; }
+        boolean isFullyResolved() {
+            return isAclGrantModeResolved() && isActionsResolved() && isResourceMountModeResolved();
+        }
     }
 
     /**
@@ -856,6 +944,10 @@ public class ResourceServiceImpl implements IResourceService {
         if (!result.isAclGrantModeResolved()) {
             result.aclGrantMode = AclGrantMode.ALL;
         }
+        // 如果未解析到资源挂载模式，则使用默认挂载模式（ALL）
+        if (!result.isResourceMountModeResolved()) {
+            result.resourceMountMode = ResourceMountMode.ALL;
+        }
 
         return result;
     }
@@ -866,11 +958,16 @@ public class ResourceServiceImpl implements IResourceService {
     private void capturePermission(ResolvedTagPermission result, TagEntity node) {
         if (!result.isAclGrantModeResolved() && node.getAclGrantMode() != null) {
             result.aclGrantMode = node.getAclGrantMode();
-            result.specifiedUsers = node.getSpecifiedUsers() != null ? node.getSpecifiedUsers()
+            result.aclGrantSpecifiedUsers = node.getAclGrantSpecifiedUsers() != null ? node.getAclGrantSpecifiedUsers()
                     : Collections.emptyList();
         }
         if (!result.isActionsResolved() && (node.getGrantedActionsMask() != null)) {
             result.grantedActionsMask = node.getGrantedActionsMask();
+        }
+        if (!result.isResourceMountModeResolved() && node.getResourceMountMode() != null) {
+            result.resourceMountMode = node.getResourceMountMode();
+                result.resourceMountSpecifiedUsers = node.getResourceMountSpecifiedUsers() != null ? node.getResourceMountSpecifiedUsers()
+                    : Collections.emptyList();
         }
     }
 }
