@@ -23,8 +23,10 @@
         <module name="wisepen-document-biz" />
         <module name="wisepen-resource-biz" />
         <module name="wisepen-file-storage-biz" />
+        <module name="wisepen-ai-asset-api" />
         <module name="wisepen-file-storage-api" />
         <module name="wisepen-fudan-extension-biz" />
+        <module name="wisepen-ai-asset-biz" />
         <module name="wisepen-resource-api" />
         <module name="wisepen-system-biz" />
         <module name="wisepen-fudan-extension-api" />
@@ -36,6 +38,9 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="wisepen-ai-asset-api" options="-parameters -parameters" />
+      <module name="wisepen-ai-asset-biz" options="-parameters -parameters" />
+      <module name="wisepen-ai-asset-service" options="-parameters -parameters" />
       <module name="wisepen-cloud" options="-parameters -parameters" />
       <module name="wisepen-common" options="-parameters -parameters" />
       <module name="wisepen-common-log" options="-parameters -parameters" />
@@ -52,7 +57,7 @@
       <module name="wisepen-note-biz" options="-parameters -parameters" />
       <module name="wisepen-note-service" options="-parameters -parameters" />
       <module name="wisepen-resource-api" options="-parameters -parameters" />
-      <module name="wisepen-resource-biz" options="-parameters" />
+      <module name="wisepen-resource-biz" options="-parameters -parameters" />
       <module name="wisepen-resource-service" options="-parameters -parameters" />
       <module name="wisepen-system-api" options="-parameters -parameters" />
       <module name="wisepen-system-biz" options="-parameters -parameters" />

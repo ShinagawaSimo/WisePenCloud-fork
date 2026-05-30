@@ -497,20 +497,14 @@ public class ResourceServiceImpl implements IResourceService {
     public String createResourceItem(ResourceCreateReqDTO dto) {
         ResourceItemEntity entity = new ResourceItemEntity();
         BeanUtil.copyProperties(dto, entity);
-        if (!StringUtils.hasText(entity.getResourceId())) {
-            entity.setResourceId(IdUtil.fastSimpleUUID());
-        }
         resourceItemRepository.save(entity);
         try {
-            String personalGroupId = ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId();
-            // Ensure a personal root/trash tag pair exists before binding new resources.
-            tagService.getTagTree(personalGroupId);
-            String pathTagID = !StringUtils.hasText(dto.getPathTagId()) ?
-                    tagRepository.findByGroupIdAndParentIdAndTagName(
-                                personalGroupId, "0", ResourceConstants.ROOT_TAG_NAME)
-                        .orElseThrow(() -> new ServiceException(ResourceError.TAG_NODE_NOT_FOUND)).getTagId()
-                    :
-                    dto.getPathTagId();
+            String pathTagID = dto.getPathTagId();
+            if (StringUtils.hasText(pathTagID)) {
+                pathTagID = tagRepository.findByGroupIdAndParentIdAndTagName(
+                        ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), "0", ResourceConstants.ROOT_TAG_NAME
+                ).orElseThrow(() -> new ServiceException(ResourceError.TAG_NODE_NOT_FOUND)).getTagId();
+            }
             List<String> targetTagIds = Collections.singletonList(pathTagID);
 
             this.updatePersonalResourceTags(entity.getResourceId(), ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), targetTagIds);

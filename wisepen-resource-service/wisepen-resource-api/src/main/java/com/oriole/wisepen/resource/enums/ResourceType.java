@@ -17,17 +17,20 @@ import java.util.Map;
 @AllArgsConstructor
 public enum ResourceType {
 
-    /** 无扩展名的笔记，由笔记服务管理，不经过文件上传流程。 */
-    NOTE(1, "NOTE", "note"),
-    PDF(2, "PDF", "pdf"),
-    DOC(3, "DOC", "doc"),
-    DOCX(4, "DOCX", "docx"),
-    PPT(5, "PPT", "ppt"),
-    PPTX(6, "PPTX", "pptx"),
-    XLS(7, "XLS", "xls"),
-    XLSX(8, "XLSX", "xlsx"),
-    SKILL(9, "SKILL", "skill"),
-    UNKNOWN(10, "UNKNOWN", "unknown");
+    /** 无扩展名的笔记，由笔记服务管理，不经过文件上传流程 */
+    NOTE(10, "NOTE", "note"),
+    PDF(21, "PDF", "pdf"),
+    DOC(22, "DOC", "doc"),
+    DOCX(23, "DOCX", "docx"),
+    PPT(24, "PPT", "ppt"),
+    PPTX(25, "PPTX", "pptx"),
+    XLS(26, "XLS", "xls"),
+    XLSX(27, "XLSX", "xlsx"),
+    /** 无扩展名的 Skill，由 AI资产 服务管理 */
+    SKILL(31, "SKILL", "skill"),
+    /** 无扩展名的 Agent，由 AI资产 服务管理 */
+    AGENT(32, "AGENT", "agent"),
+    UNKNOWN(99, "UNKNOWN", "unknown");
 
     @EnumValue
     @JsonValue

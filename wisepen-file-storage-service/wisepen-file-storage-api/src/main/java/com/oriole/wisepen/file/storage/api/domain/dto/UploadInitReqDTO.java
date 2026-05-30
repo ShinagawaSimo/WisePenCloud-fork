@@ -1,8 +1,6 @@
 package com.oriole.wisepen.file.storage.api.domain.dto;
 
 import com.oriole.wisepen.file.storage.api.enums.StorageSceneEnum;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +17,6 @@ public class UploadInitReqDTO implements Serializable {
     private String extension;
     private StorageSceneEnum scene;
     private String bizTag;
-    private String objectKey;
     private Long configId;
     private Long expectedSize;
 }
