@@ -2,6 +2,7 @@ package com.oriole.wisepen.resource.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
+import cn.hutool.core.util.IdUtil;
 import com.oriole.wisepen.common.core.domain.PageR;
 import com.oriole.wisepen.common.core.domain.enums.GroupRoleType;
 import com.oriole.wisepen.common.core.domain.enums.list.QueryLogicEnum;
@@ -498,12 +499,12 @@ public class ResourceServiceImpl implements IResourceService {
         BeanUtil.copyProperties(dto, entity);
         resourceItemRepository.save(entity);
         try {
-            String pathTagID = !StringUtils.hasText(dto.getPathTagId()) ?
-                    tagRepository.findByGroupIdAndParentIdAndTagName(
-                                ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), "0", ResourceConstants.ROOT_TAG_NAME)
-                        .orElseThrow(() -> new ServiceException(ResourceError.TAG_NODE_NOT_FOUND)).getTagId()
-                    :
-                    dto.getPathTagId();
+            String pathTagID = dto.getPathTagId();
+            if (StringUtils.hasText(pathTagID)) {
+                pathTagID = tagRepository.findByGroupIdAndParentIdAndTagName(
+                        ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), "0", ResourceConstants.ROOT_TAG_NAME
+                ).orElseThrow(() -> new ServiceException(ResourceError.TAG_NODE_NOT_FOUND)).getTagId();
+            }
             List<String> targetTagIds = Collections.singletonList(pathTagID);
 
             this.updatePersonalResourceTags(entity.getResourceId(), ResourceConstants.PERSONAL_GROUP_PREFIX + dto.getOwnerId(), targetTagIds);
