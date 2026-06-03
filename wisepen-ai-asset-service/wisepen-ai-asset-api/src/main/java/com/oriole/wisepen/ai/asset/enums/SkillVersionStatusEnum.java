@@ -9,15 +9,15 @@ import java.util.Arrays;
 
 @Getter
 @AllArgsConstructor
-public enum SkillSourceTypeEnum {
-    BY_AGENT("BY_AGENT"),
-    MANUAL("MANUAL");
+public enum SkillVersionStatusEnum {
+    DRAFT("DRAFT"),
+    CONFIRMED("CONFIRMED");
 
     @JsonValue
     private final String code;
 
     @JsonCreator
-    public static SkillSourceTypeEnum fromCode(String code) {
+    public static SkillVersionStatusEnum fromCode(String code) {
         if (code == null) {
             return null;
         }

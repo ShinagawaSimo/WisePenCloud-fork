@@ -11,19 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SkillAssetUploadInitRequest {
+public class SkillVersionCreateRequest {
     @NotBlank(message = SkillValidationMsg.SKILL_ID_NOT_BLANK)
-    private String skillId;
-
-    @NotBlank(message = SkillValidationMsg.SKILL_VERSION_NOT_BLANK)
-    private String version;
-
-    @NotBlank(message = SkillValidationMsg.SKILL_RELATIVE_PATH_NOT_BLANK)
-    private String relativePath;
-
-    private String kind;
-
-    private String md5;
-
-    private Long expectedSize;
+    private String resourceId;
 }

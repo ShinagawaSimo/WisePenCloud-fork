@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SkillAssetEntity {
+public class SkillFileEntity {
+    private String id;
+    private String name;
     private String path;
     private String objectKey;
-    private String kind;
-    private Long sizeBytes;
 }

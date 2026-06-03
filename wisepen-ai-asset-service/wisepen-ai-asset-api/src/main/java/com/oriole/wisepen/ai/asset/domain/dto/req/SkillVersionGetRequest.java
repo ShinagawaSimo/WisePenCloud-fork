@@ -11,14 +11,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SkillManifestUploadInitRequest {
+public class SkillVersionGetRequest {
     @NotBlank(message = SkillValidationMsg.SKILL_ID_NOT_BLANK)
-    private String skillId;
+    private String resourceId;
 
-    @NotBlank(message = SkillValidationMsg.SKILL_VERSION_NOT_BLANK)
-    private String version;
-
-    private String md5;
-
-    private Long expectedSize;
+    private Integer version;
 }

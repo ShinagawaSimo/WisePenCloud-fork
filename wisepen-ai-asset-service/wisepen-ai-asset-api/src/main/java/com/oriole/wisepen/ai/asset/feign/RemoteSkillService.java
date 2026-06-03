@@ -2,12 +2,15 @@ package com.oriole.wisepen.ai.asset.feign;
 
 import com.oriole.wisepen.common.core.domain.R;
 import com.oriole.wisepen.file.storage.api.domain.dto.UploadInitRespDTO;
-import com.oriole.wisepen.ai.asset.domain.dto.req.SkillAssetUploadInitRequest;
+import com.oriole.wisepen.ai.asset.domain.dto.req.SkillAssetCreateRequest;
 import com.oriole.wisepen.ai.asset.domain.dto.req.SkillCreateRequest;
 import com.oriole.wisepen.ai.asset.domain.dto.req.SkillInfoGetRequest;
 import com.oriole.wisepen.ai.asset.domain.dto.req.SkillInfoRequest;
-import com.oriole.wisepen.ai.asset.domain.dto.req.SkillManifestUploadInitRequest;
 import com.oriole.wisepen.ai.asset.domain.dto.req.SkillUpdateRequest;
+import com.oriole.wisepen.ai.asset.domain.dto.req.SkillVersionConfirmRequest;
+import com.oriole.wisepen.ai.asset.domain.dto.req.SkillVersionCreateRequest;
+import com.oriole.wisepen.ai.asset.domain.dto.req.SkillVersionGetRequest;
+import com.oriole.wisepen.ai.asset.domain.dto.req.SkillVersionInfoRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -30,11 +33,19 @@ public interface RemoteSkillService {
     @PostMapping("/internal/skill/getSkillInfo")
     R<SkillInfoRequest> getSkillInfo(@RequestBody SkillInfoGetRequest dto);
 
-    @Operation(summary = "初始化 SKILL.md 上传", description = "为指定 Skill 版本初始化 SKILL.md 上传")
-    @PostMapping("/internal/skill/initManifestUpload")
-    R<UploadInitRespDTO> initManifestUpload(@RequestBody SkillManifestUploadInitRequest dto);
+    @Operation(summary = "创建 Skill 草稿版本", description = "创建或返回当前唯一草稿版本")
+    @PostMapping("/internal/skill/createSkillVersion")
+    R<SkillVersionInfoRequest> createSkillVersion(@RequestBody SkillVersionCreateRequest dto);
 
-    @Operation(summary = "初始化 Skill 资产上传", description = "为指定 Skill 版本初始化资产上传")
-    @PostMapping("/internal/skill/initAssetUpload")
-    R<UploadInitRespDTO> initAssetUpload(@RequestBody SkillAssetUploadInitRequest dto);
+    @Operation(summary = "获取 Skill 版本", description = "查询指定版本或当前确认版本的文件快照")
+    @PostMapping("/internal/skill/getSkillVersion")
+    R<SkillVersionInfoRequest> getSkillVersion(@RequestBody SkillVersionGetRequest dto);
+
+    @Operation(summary = "确认 Skill 版本", description = "确认当前草稿版本并推进主档版本号")
+    @PostMapping("/internal/skill/confirmSkillVersion")
+    R<Void> confirmSkillVersion(@RequestBody SkillVersionConfirmRequest dto);
+
+    @Operation(summary = "创建 Skill 文件", description = "为草稿版本添加或替换文件并初始化上传")
+    @PostMapping("/internal/skill/createSkillAsset")
+    R<UploadInitRespDTO> createSkillAsset(@RequestBody SkillAssetCreateRequest dto);
 }
