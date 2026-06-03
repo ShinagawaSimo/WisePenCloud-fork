@@ -44,7 +44,10 @@ public enum ResourceError implements IResult {
     CANNOT_BIND_RESOURCE_TO_MULTIPLE_PATH_NODES(5511, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.NOT_ALLOWED),"不能为资源绑定多个路径节点"),
     CANNOT_PLACE_RESOURCE_PATH_TAG_AFTER_TAGS(5512, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.NOT_ALLOWED),"不能将资源路径标签放在普通标签之后"),
     CANNOT_BIND_MULTIPLE_RESOURCE_TAGS_IN_FOLDER_MODE(5521, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.ALREADY_EXISTS),"该资源已绑定标签，文件夹模式下不能重复绑定"),
-    BIND_RESOURCE_TO_TAG_NODE_DENIED(5531, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.PERMISSION_DENIED),"无权挂载资源到该标签下");
+    BIND_RESOURCE_TO_TAG_NODE_DENIED(5531, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.RESOURCE_TAG, ErrorReason.PERMISSION_DENIED),"无权挂载资源到该标签下"),
+
+    // 小组资源管理模式异常
+    CANNOT_CHANGE_FILE_ORG_LOGIC_FROM_TAG_TO_FOLDER(5611, new ResultKey(BusinessDomain.RESOURCE, ResourceSubject.FILE_ORG_LOGIC, ErrorReason.UNSUPPORTED), "小组资源管理模式不允许从TAG改为FOLDER");
 
     private final Integer code;
     private final ResultKey key;

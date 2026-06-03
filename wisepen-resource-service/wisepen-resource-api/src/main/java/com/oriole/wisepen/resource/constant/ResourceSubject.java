@@ -9,7 +9,8 @@ public enum ResourceSubject implements IBusinessSubject {
     TAG_PATH_NODE,
     TAG_TREE,
     RESOURCE,
-    RESOURCE_TAG;
+    RESOURCE_TAG,
+    FILE_ORG_LOGIC;
 
     @Override
     public String key() {
