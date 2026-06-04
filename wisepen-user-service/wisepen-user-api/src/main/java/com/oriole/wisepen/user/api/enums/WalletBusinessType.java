@@ -12,9 +12,9 @@ public enum WalletBusinessType {
     COIN(2, "COIN");
 
 
-    @EnumValue
-    @JsonValue
-    private final int code;
+	private final int code;
 
-    private final String value;
+	@EnumValue
+	@JsonValue
+	private final String value;
 }

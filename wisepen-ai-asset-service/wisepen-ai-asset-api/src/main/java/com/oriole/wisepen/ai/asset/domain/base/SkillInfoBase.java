@@ -1,16 +1,16 @@
 package com.oriole.wisepen.ai.asset.domain.base;
 
-import com.oriole.wisepen.ai.asset.enums.SkillAuditStatusEnum;
-import com.oriole.wisepen.ai.asset.enums.SkillSourceTypeEnum;
-import com.oriole.wisepen.ai.asset.enums.SkillStatusEnum;
+import com.oriole.wisepen.ai.asset.enums.SkillSourceType;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Data
+@SuperBuilder
+@NoArgsConstructor
 public class SkillInfoBase {
-    private String skillName;
-    private String ownerId;
+    private String name;
     private String description;
-    private SkillStatusEnum skillStatus;
-    private SkillAuditStatusEnum auditStatus;
-    private SkillSourceTypeEnum sourceType;
+    private Integer version;
+    private SkillSourceType sourceType;
 }

@@ -11,9 +11,9 @@ public enum WalletPayerType {
     USER(1, "USER"),
     GROUP(2, "GROUP");
 
-    @EnumValue
-    @JsonValue
-    private final int code;
+	private final int code;
 
-    private final String value;
+	@EnumValue
+	@JsonValue
+	private final String value;
 }

@@ -1,24 +1,28 @@
 package com.oriole.wisepen.ai.asset.domain.dto.req;
 
 import com.oriole.wisepen.ai.asset.constant.SkillValidationMsg;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SkillManifestUploadInitRequest {
+public class SkillAssetDeleteRequest {
     @NotBlank(message = SkillValidationMsg.SKILL_ID_NOT_BLANK)
-    private String skillId;
+    private String resourceId;
 
-    @NotBlank(message = SkillValidationMsg.SKILL_VERSION_NOT_BLANK)
-    private String version;
+    private Integer draftVersion;
 
-    private String md5;
-
-    private Long expectedSize;
+    @Valid
+    @NotEmpty(message = SkillValidationMsg.SKILL_ASSET_LIST_NOT_EMPTY)
+    private List<String> assetIds = new ArrayList<>();
 }
