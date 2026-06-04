@@ -72,7 +72,7 @@ public class SkillVersionServiceImpl implements ISkillVersionService {
             version = skill.getVersion();
         }
         SkillVersionEntity entity = skillVersionRepository.findByResourceIdAndVersion(resourceId, version)
-                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_INVALID));
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_NOT_FOUND));
         return BeanUtil.copyProperties(entity, SkillVersionInfoResponse.class);
     }
 
@@ -81,8 +81,8 @@ public class SkillVersionServiceImpl implements ISkillVersionService {
     public SkillAssetUploadInitResponse initUploadSkillAssets(SkillAssetUploadInitRequest req) {
         // 检查当前是否是草案版本
         SkillVersionEntity draft = skillVersionRepository.findByResourceIdAndVersion(req.getResourceId(), req.getDraftVersion())
-                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_INVALID));
-        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.SKILL_VERSION_IS_NOT_DRAFT);
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_NOT_FOUND));
+        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.CANNOT_OPERATE_NON_DRAFT_SKILL_VERSION);
 
         Set<String> replacedObjectKeys = new HashSet<>();
 
@@ -139,14 +139,14 @@ public class SkillVersionServiceImpl implements ISkillVersionService {
         if (path == null || path.isBlank() || !path.startsWith("/") || path.contains("\\")
                 || path.contains("//") || path.contains("/../") || path.endsWith("/..")
                 || (!ROOT_PATH.equals(path) && path.endsWith("/"))) {
-            throw new ServiceException(SkillError.SKILL_RELATIVE_PATH_INVALID);
+            throw new ServiceException(SkillError.SKILL_ASSET_PATH_INVALID);
         }
     }
 
     private void validateFileName(String name) {
         if (name == null || name.isBlank() || name.contains("/") || name.contains("\\")
                 || ".".equals(name) || "..".equals(name)) {
-            throw new ServiceException(SkillError.SKILL_RELATIVE_PATH_INVALID);
+            throw new ServiceException(SkillError.SKILL_ASSET_PATH_INVALID);
         }
     }
 
@@ -178,8 +178,8 @@ public class SkillVersionServiceImpl implements ISkillVersionService {
     public void deleteSkillAssets(SkillAssetDeleteRequest req) {
         // 检查是否是草案版本
         SkillVersionEntity draft = skillVersionRepository.findByResourceIdAndVersion(req.getResourceId(), req.getDraftVersion())
-                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_INVALID));
-        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.SKILL_VERSION_IS_NOT_DRAFT);
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_NOT_FOUND));
+        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.CANNOT_OPERATE_NON_DRAFT_SKILL_VERSION);
 
         Set<String> removedObjectKeys = new HashSet<>();
 
@@ -226,15 +226,15 @@ public class SkillVersionServiceImpl implements ISkillVersionService {
     public void publishSkillVersion(SkillVersionPublishRequest req) {
         // 检查当否是草案版本
         SkillVersionEntity draft = skillVersionRepository.findByResourceIdAndVersion(req.getResourceId(), req.getDraftVersion())
-                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_INVALID));
-        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.SKILL_VERSION_IS_NOT_DRAFT);
+                .orElseThrow(() -> new ServiceException(SkillError.SKILL_VERSION_NOT_FOUND));
+        if (draft.getStatus() != SkillVersionStatus.DRAFT) throw new ServiceException(SkillError.CANNOT_OPERATE_NON_DRAFT_SKILL_VERSION);
         // 核心资源缺失
         if (isSkillDraftUnavailable(draft.getMainSkillMD())) {
             throw new ServiceException(SkillError.SKILL_CORE_ASSET_NOT_FOUND);
         }
         // 资源未就绪（有上传中的资源）
         if (draft.getSkillAssets() != null && draft.getSkillAssets().stream().anyMatch(this::isSkillDraftUnavailable)) {
-            throw new ServiceException(SkillError.SKILL_CORE_ASSET_NOT_READY);
+            throw new ServiceException(SkillError.SKILL_ASSET_NOT_READY);
         }
         draft.setStatus(SkillVersionStatus.PUBLISHED);
         skillRepository.updateVersionByResourceId(req.getResourceId(), req.getDraftVersion());

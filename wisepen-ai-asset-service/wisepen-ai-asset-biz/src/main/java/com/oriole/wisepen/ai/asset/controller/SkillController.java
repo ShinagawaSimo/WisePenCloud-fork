@@ -116,7 +116,7 @@ public class SkillController {
                 .groupRoles(SecurityContextHolder.getGroupRoleMap())
                 .build()).getData();
         if (permission == null || permission.getResourceAccessRole() != ResourceAccessRole.OWNER) {
-            throw new ServiceException(SkillError.SKILL_OWNER_MISMATCH);
+            throw new ServiceException(SkillError.SKILL_PERMISSION_DENIED);
         }
     }
 }
