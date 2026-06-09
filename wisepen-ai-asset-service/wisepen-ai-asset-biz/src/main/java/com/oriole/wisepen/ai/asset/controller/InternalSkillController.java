@@ -37,7 +37,7 @@ public class InternalSkillController {
             throw new ServiceException(SkillError.SKILL_VERSION_NOT_FOUND);
         }
         SkillInfoResponse response = BeanUtil.copyProperties(skill, SkillInfoResponse.class);
-        response.setSkillVersion(skillVersionService.getSkillVersion(resourceId, skillVersion));
+        response.setSkillVersionBundle(skillVersionService.getSkillVersionBundle(resourceId, skillVersion));
         return R.ok(response);
     }
 
